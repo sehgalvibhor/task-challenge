@@ -1,0 +1,443 @@
+<!doctype html >
+<html>
+
+<head>
+    <title>Data Dashboard</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/razorflow.min.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/custom.css') }}">
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+    <script type="text/javascript" src="{{ url_for('static', filename='js/jquery.min.js')}}"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='js/razorflow.min.js')}}"></script>
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <!-- Optional theme -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+    <!-- Latest compiled and minified JavaScript -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='js/jquery.min.js')}}"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js"></script>
+    <style type="text/css">
+    .glyphicon {
+        margin-bottom: 10px;
+        margin-right: 10px;
+    }
+    
+    small {
+        display: block;
+        line-height: 1.428571429;
+        color: #999;
+    }
+    
+    @import url(http://fonts.googleapis.com/css?family=Source+Code+Pro:400,600);
+    body {
+        font-family: "Source Code Pro", Consolas, monaco, monospace;
+        line-height: 160%;
+        font-size: 16px;
+        margin: 0;
+    }
+    
+    path.link {
+        fill: none;
+        stroke-width: 2px;
+    }
+    
+    .node:not(:hover) .nodetext {
+        display: none;
+    }
+    
+    h1 {
+        font-size: 36px;
+        margin: 10px 0;
+        text-transform: uppercase;
+        font-weight: normal;
+    }
+    
+    h2,
+    h3 {
+        font-size: 18px;
+        margin: 5px 0;
+        font-weight: normal;
+    }
+    
+    a:link {
+        color: #EE3124;
+        text-decoration: none;
+    }
+    
+    a:visited {
+        color: #EE3124;
+    }
+    
+    a:hover {
+        color: #A4CD39;
+        text-decoration: underline;
+    }
+    
+    a:active {
+        color: #EE3124;
+    }
+    </style>
+</head>
+{% block body %}
+
+<body>
+    <nav class="navbar navbar-default">
+        <div class="container-fluid">
+            <!-- Brand and toggle get grouped for better mobile display -->
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1" aria-expanded="false">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="#">Data Dashboard</a>
+            </div>
+            <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+                <ul class="nav navbar-nav">
+                    <li class="active"><a href="/">Home <span class="sr-only">(current)</span></a></li>
+                </ul>
+                <!--
+      <ul class="nav navbar-nav navbar-right">
+         <li><a href="/user/sign-out">Sign Out</a></li>
+          <li><a href="/user/profile">Profile</a></li>
+      
+                 </ul>
+      -->
+            </div>
+            <!-- /.navbar-collapse -->
+        </div>
+        <!-- /.container-fluid -->
+    </nav>
+    <div class="container" id="main">
+        <div class="row">
+            <div class="form-group">
+                <label class="col-md-4 control-label" for="selectbasic">Channel List:</label>
+                <div class="col-md-4">
+                    <select id="selectbasic" name="selectbasic" class="form-control">
+                        <option>--select--</option>
+                    </select>
+                </div>
+            </div>
+            <div id="dashboard_target" style="padding-top:30px"></div>
+        </div>
+        <div class="row">
+            <div class="col-md-12">
+                <header>
+                    <h1>Top 50 Channels</h1>
+                    <h2>Click to view their identity</h2>
+                </header>
+                <section id="vis"></section>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-12">
+                {% include 'channels.html' %}
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-12">
+                {% include 'cloud.html' %}
+            </div>
+        </div>
+    </div>
+</body>
+<script type="text/javascript">
+// some colour variables
+
+var tcBlack = "#130C0E";
+
+// rest of vars
+var w = 960,
+    h = 600,
+    maxNodeSize = 50,
+    x_browser = 20,
+    y_browser = 25,
+    root;
+
+var vis;
+var force = d3.layout.force();
+
+vis = d3.select("#vis").append("svg").attr("width", w).attr("height", h);
+
+d3.json('/static/data/graph.json', function(json) {
+
+    root = json;
+    root.fixed = true;
+    root.x = w / 2;
+    root.y = h / 2;
+
+
+    // Build the path
+    var defs = vis.insert("svg:defs")
+        .data(["end"]);
+
+
+    defs.enter().append("svg:path")
+        .attr("d", "M0,-5L10,0L0,5");
+
+    update();
+});
+
+
+/**
+ *   
+ */
+function update() {
+    var nodes = flatten(root),
+        links = d3.layout.tree().links(nodes);
+
+    // Restart the force layout.
+    force.nodes(nodes)
+        .links(links)
+        .gravity(0.05)
+        .charge(-1500)
+        .linkDistance(100)
+        .friction(0.5)
+        .linkStrength(function(l, i) {
+            return 1;
+        })
+        .size([w, h])
+        .on("tick", tick)
+        .start();
+
+    var path = vis.selectAll("path.link")
+        .data(links, function(d) {
+            return d.target.id;
+        });
+
+    path.enter().insert("svg:path")
+        .attr("class", "link")
+        // .attr("marker-end", "url(#end)")
+        .style("stroke", "#eee");
+
+
+    // Exit any old paths.
+    path.exit().remove();
+
+
+
+    // Update the nodes…
+    var node = vis.selectAll("g.node")
+        .data(nodes, function(d) {
+            return d.id;
+        });
+
+
+    // Enter any new nodes.
+    var nodeEnter = node.enter().append("svg:g")
+        .attr("class", "node")
+        .attr("transform", function(d) {
+            return "translate(" + d.x + "," + d.y + ")";
+        })
+        //.on("click", click)
+        .call(force.drag);
+
+    // Append a circle
+    nodeEnter.append("svg:circle")
+        .attr("r", function(d) {
+            return Math.sqrt(d.size) / 10 || 4.5;
+        })
+        .style("fill", "#eee");
+
+
+    // Append images
+    var images = nodeEnter.append("svg:image")
+        .attr("xlink:href", function(d) {
+            return d.img;
+        })
+        .attr("x", function(d) {
+            return -25;
+        })
+        .attr("y", function(d) {
+            return -25;
+        })
+        .attr("height", 50)
+        .attr("width", 50);
+
+    // make the image grow a little on mouse over and add the text details on click
+    var setEvents = images
+        // Append hero text
+        .on('click', function(d) {
+            d3.select("h2").html(d.name);
+            //d3.select("h3").html("Take me to " + "<a href='" + d.link + "' >" + d.hero + " web page ⇢" + "</a>");
+        })
+
+    .on('mouseenter', function() {
+            // select element in current context
+            d3.select(this)
+                .transition()
+                .attr("x", function(d) {
+                    return -60;
+                })
+                .attr("y", function(d) {
+                    return -60;
+                })
+                .attr("height", 100)
+                .attr("width", 100);
+        })
+        // set back
+        .on('mouseleave', function() {
+            d3.select(this)
+                .transition()
+                .attr("x", function(d) {
+                    return -25;
+                })
+                .attr("y", function(d) {
+                    return -25;
+                })
+                .attr("height", 50)
+                .attr("width", 50);
+        });
+
+    // Append hero name on roll over next to the node as well
+    nodeEnter.append("text")
+        .attr("class", "nodetext")
+        .attr("x", x_browser)
+        .attr("y", y_browser + 15)
+        .attr("fill", tcBlack)
+        .text(function(d) {
+            return d.hero;
+        });
+
+
+    // Exit any old nodes.
+    node.exit().remove();
+
+
+    // Re-select for update.
+    path = vis.selectAll("path.link");
+    node = vis.selectAll("g.node");
+
+    function tick() {
+
+
+        path.attr("d", function(d) {
+
+            var dx = d.target.x - d.source.x,
+                dy = d.target.y - d.source.y,
+                dr = Math.sqrt(dx * dx + dy * dy);
+            return "M" + d.source.x + "," + d.source.y + "A" + dr + "," + dr + " 0 0,1 " + d.target.x + "," + d.target.y;
+        });
+        node.attr("transform", nodeTransform);
+    }
+}
+
+
+/**
+ * Gives the coordinates of the border for keeping the nodes inside a frame
+ * http://bl.ocks.org/mbostock/1129492
+ */
+function nodeTransform(d) {
+    d.x = Math.max(maxNodeSize, Math.min(w - (d.imgwidth / 2 || 16), d.x));
+    d.y = Math.max(maxNodeSize, Math.min(h - (d.imgheight / 2 || 16), d.y));
+    return "translate(" + d.x + "," + d.y + ")";
+}
+
+/**
+ * Toggle children on click.
+ */
+function click(d) {
+    if (d.children) {
+        d._children = d.children;
+        d.children = null;
+    } else {
+        d.children = d._children;
+        d._children = null;
+    }
+
+    update();
+}
+
+
+/**
+ * Returns a list of all nodes under the root.
+ */
+function flatten(root) {
+    var nodes = [];
+    var i = 0;
+
+    function recurse(node) {
+        if (node.children)
+            node.children.forEach(recurse);
+        if (!node.id)
+            node.id = ++i;
+        nodes.push(node);
+    }
+
+    recurse(root);
+    return nodes;
+}
+</script>
+<script type="text/javascript">
+$.get("/channel_list", function(data) {
+    for (i = 0; i < data.length; i++) {
+        $('#selectbasic').append('<option value="' + data[i]['channelid'] + '">' + data[i]['channeltitle'] + '</option>')
+    }
+});
+</script>
+<script type="text/javascript">
+var db = new EmbeddedDashboard();
+var gauge = new GaugeComponent();
+var kpi = new KPIGroupComponent();
+kpi.setDimensions(12, 2);
+gauge.setDimensions(3, 3);
+gauge.setLimits(0, 200);
+gauge.setCaption('Average Metrics');
+kpi.setCaption('Channel Details');
+kpi.addKPI('total_rides', {
+    caption: 'Videos',
+    value: 0,
+    numberSuffix: ''
+});
+kpi.addKPI('duration', {
+    caption: 'Subscribers',
+    value: 0,
+    numberSuffix: ''
+});
+kpi.addKPI('dist', {
+    caption: 'View Count',
+    value: 0,
+    numberSuffix: ''
+});
+kpi.addKPI('average_score', {
+    caption: 'Comment Count',
+    value: 0,
+    numberSuffix: ' '
+});
+db.addComponent(kpi);
+db.embedTo("dashboard_target");
+
+function create_dashboard(val) {
+    $.get("/channel_details/" + String(val), function(data) {
+        kpi.lock();
+        kpi.updateKPI('total_rides', {
+            caption: 'Videos',
+            value: parseInt(data[0]['channel_videocount'])
+        });
+        kpi.updateKPI('duration', {
+            caption: 'Subscribers',
+            value: parseInt(data[0]['channel_subscribercount'])
+        });
+        kpi.updateKPI('dist', {
+            caption: 'View Count',
+            value: parseInt(data[0]['channel_viewcount']),
+            numberSuffix: ''
+        });
+        kpi.updateKPI('average_score', {
+            caption: 'Comment Count',
+            value: parseInt(data[0]['channel_commentcount']),
+            numberPrefix: ''
+        });
+        kpi.unlock();
+    });
+}
+
+$('#selectbasic').on('change', function() {
+    var val = $('#selectbasic').val();
+    create_dashboard(val);
+});
+</script>
+
+</html>
+{% endblock %}
