@@ -12,3 +12,6 @@ This script searches for videos with user inputted keyword, gets all the metadat
 * Hosted on Heroku
 * Live version: https://precogtask.herokuapp.com/
 * Thanks to various tutorials most of the code is reused and optimized.
+
+## Likes Predictor Linear Regression
+* Described in the prediction folder
