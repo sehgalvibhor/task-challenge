@@ -21,4 +21,4 @@ I divided the feature set into two categories - numerical and text based.
 
 Numerical based:
 A basic correlation of the number of likes with the numerical features were as following:
-![Image of Model](task-challenge/predictor/Capture1.PNG)
+![capture1](https://cloud.githubusercontent.com/assets/10993808/26173422/637f0080-3b69-11e7-8fc6-e9474e383323.PNG)
